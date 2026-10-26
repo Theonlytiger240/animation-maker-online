@@ -10,6 +10,8 @@ const colorPicker = document.getElementById('color-picker');
 const opacityRange = document.getElementById('opacity-range');
 const opacityValue = document.getElementById('opacity-value');
 const onionSkinToggle = document.getElementById('onion-skin');
+const fpsRange = document.getElementById('fps-range');
+const fpsValue = document.getElementById('fps-value');
 const playBtn = document.getElementById('play-btn');
 const exportBtn = document.getElementById('export-btn');
 const newSceneBtn = document.getElementById('new-scene');
@@ -68,6 +70,17 @@ function setTool(toolName) {
   });
 }
 
+function updateFpsMeta() {
+  state.fps = Number(fpsRange.value);
+  fpsLabel.textContent = `${state.fps} fps`;
+  fpsValue.textContent = `${state.fps} fps`;
+
+  if (state.playing) {
+    stopPlayback();
+    playAnimation();
+  }
+}
+
 function renderFrameLabel() {
   const frameIndex = state.currentFrameIndex + 1;
   frameLabel.textContent = `Frame ${frameIndex}`;
@@ -75,15 +88,18 @@ function renderFrameLabel() {
 }
 
 function renderStage() {
-  if (!state.frames.length) {
-    return;
-  }
+  if (!state.frames.length) return;
 
   const frame = getCurrentFrame();
   drawImageToCanvas(frame.dataUrl);
-  if (state.onionSkin) {
-    drawOnionSkin();
+
+  if (state.onionSkin && !state.isDrawing && !state.playing) {
+    const previousFrame = state.frames[state.currentFrameIndex - 1];
+    if (previousFrame) {
+      drawPreviewFrame(previousFrame.dataUrl, 0.18);
+    }
   }
+
   renderFrameLabel();
 }
 
@@ -98,27 +114,12 @@ function drawImageToCanvas(dataUrl) {
   img.src = dataUrl;
 }
 
-function drawOnionSkin() {
-  const previousFrame = state.frames[state.currentFrameIndex - 1];
-  const nextFrame = state.frames[state.currentFrameIndex + 1];
-
-  if (previousFrame) {
-    drawPreviewFrame(previousFrame.dataUrl, 0.22, 'previous');
-  }
-
-  if (nextFrame) {
-    drawPreviewFrame(nextFrame.dataUrl, 0.12, 'next');
-  }
-}
-
-function drawPreviewFrame(dataUrl, alpha, type) {
+function drawPreviewFrame(dataUrl, alpha) {
   const img = new Image();
   img.onload = () => {
     ctx.save();
     ctx.globalAlpha = alpha;
-    if (type === 'previous') {
-      ctx.filter = 'grayscale(0.2) sepia(0.2)';
-    }
+    ctx.filter = 'grayscale(0.2) sepia(0.2)';
     ctx.drawImage(img, 0, 0, stageWidth, stageHeight);
     ctx.restore();
   };
@@ -133,6 +134,7 @@ function snapshotCurrentFrame() {
     frame.dataUrl = dataUrl;
     const history = frame.history;
     const previous = history[history.length - 1];
+
     if (previous !== dataUrl) {
       history.push(dataUrl);
       if (history.length > 25) {
@@ -147,9 +149,7 @@ function snapshotCurrentFrame() {
 
 function undoFrame() {
   const frame = getCurrentFrame();
-  if (frame.history.length <= 1) {
-    return;
-  }
+  if (frame.history.length <= 1) return;
 
   frame.historyIndex = Math.max(0, frame.historyIndex - 1);
   frame.dataUrl = frame.history[frame.historyIndex];
@@ -158,10 +158,14 @@ function undoFrame() {
 }
 
 function clearFrame() {
-  ctx.clearRect(0, 0, stageWidth, stageHeight);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, stageWidth, stageHeight);
-  snapshotCurrentFrame();
+  const blank = createBlankFrameDataUrl();
+  const frame = getCurrentFrame();
+  frame.dataUrl = blank;
+  frame.history.push(blank);
+  if (frame.history.length > 25) frame.history.shift();
+  frame.historyIndex = frame.history.length - 1;
+  drawImageToCanvas(blank);
+  renderTimeline();
 }
 
 function renderTimeline() {
@@ -185,9 +189,7 @@ function renderTimeline() {
 
     button.addEventListener('click', () => {
       state.currentFrameIndex = index;
-      if (state.playing) {
-        stopPlayback();
-      }
+      if (state.playing) stopPlayback();
       renderStage();
       renderTimeline();
     });
@@ -218,9 +220,7 @@ function duplicateFrame() {
 }
 
 function deleteFrame() {
-  if (state.frames.length <= 1) {
-    return;
-  }
+  if (state.frames.length <= 1) return;
 
   state.frames.splice(state.currentFrameIndex, 1);
   state.currentFrameIndex = Math.min(state.currentFrameIndex, state.frames.length - 1);
@@ -277,8 +277,11 @@ function drawStroke(start, end) {
 }
 
 function startDrawing(event) {
-  if (state.playing) {
-    return;
+  if (state.playing) return;
+
+  if (state.onionSkin) {
+    state.onionSkin = false;
+    renderStage();
   }
 
   const point = getMousePosition(event);
@@ -289,6 +292,11 @@ function startDrawing(event) {
     fillArea(point, colorPicker.value);
     snapshotCurrentFrame();
     state.isDrawing = false;
+
+    if (onionSkinToggle.checked) {
+      state.onionSkin = true;
+    }
+    renderStage();
     return;
   }
 
@@ -297,9 +305,7 @@ function startDrawing(event) {
 }
 
 function moveDrawing(event) {
-  if (!state.isDrawing || state.tool === 'fill') {
-    return;
-  }
+  if (!state.isDrawing || state.tool === 'fill') return;
 
   const point = getMousePosition(event);
   drawStroke(state.lastPoint, point);
@@ -307,16 +313,21 @@ function moveDrawing(event) {
 }
 
 function endDrawing(event) {
-  if (!state.isDrawing) {
-    return;
-  }
+  if (!state.isDrawing) return;
 
   state.isDrawing = false;
   state.lastPoint = null;
+
   if (event && typeof event.pointerId === 'number') {
     stage.releasePointerCapture(event.pointerId);
   }
+
   snapshotCurrentFrame();
+
+  if (onionSkinToggle.checked) {
+    state.onionSkin = true;
+  }
+  renderStage();
 }
 
 function fillArea(point, fillColor) {
@@ -325,9 +336,7 @@ function fillArea(point, fillColor) {
   const target = getPixelAt(data, point.x, point.y);
   const replacement = hexToRgba(fillColor);
 
-  if (!target || !replacement) {
-    return;
-  }
+  if (!target || !replacement) return;
 
   const queue = [{ x: Math.round(point.x), y: Math.round(point.y) }];
   const visited = new Set();
@@ -381,13 +390,19 @@ function colorMatches(pixelA, pixelB) {
     return false;
   }
 
-  return pixelA[0] === pixelB[0] && pixelA[1] === pixelB[1] && pixelA[2] === pixelB[2] && pixelA[3] === pixelB[3];
+  return pixelA[0] === pixelB[0] &&
+    pixelA[1] === pixelB[1] &&
+    pixelA[2] === pixelB[2] &&
+    pixelA[3] === pixelB[3];
 }
 
 function hexToRgba(hex) {
   const clean = hex.replace('#', '');
-  const full = clean.length === 3 ? clean.split('').map((ch) => ch + ch).join('') : clean;
+  const full = clean.length === 3
+    ? clean.split('').map((ch) => ch + ch).join('')
+    : clean;
   const numeric = Number.parseInt(full, 16);
+
   return [
     (numeric >> 16) & 255,
     (numeric >> 8) & 255,
@@ -440,6 +455,8 @@ function bindEvents() {
     renderStage();
   });
 
+  fpsRange.addEventListener('input', updateFpsMeta);
+
   playBtn.addEventListener('click', playAnimation);
   exportBtn.addEventListener('click', exportPng);
   newSceneBtn.addEventListener('click', newScene);
@@ -460,6 +477,7 @@ function init() {
   setTool('pen');
   updateBrushMeta();
   updateOpacityMeta();
+  updateFpsMeta();
   bindEvents();
   renderStage();
   renderTimeline();
