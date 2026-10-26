@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Flipaclip-inspired animation maker for GitHub Pages."
+    />
+    <title>Flipaclip Remix</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-badge">✦</div>
+          <div>
+            <h1>Flipaclip Remix</h1>
+            <p>Simple animation studio</p>
+          </div>
+        </div>
+
+        <div class="top-actions">
+          <button id="new-scene" class="ghost-button">New scene</button>
+          <button id="play-btn" class="primary-button">Play</button>
+          <button id="export-btn" class="secondary-button">Export PNG</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar panel">
+          <section>
+            <h2>Tools</h2>
+            <div class="tool-grid">
+              <button class="tool-button active" data-tool="pen">✏️ Pen</button>
+              <button class="tool-button" data-tool="eraser">🧽 Eraser</button>
+              <button class="tool-button" data-tool="fill">🪣 Fill</button>
+            </div>
+          </section>
+
+          <section class="control-group">
+            <label for="brush-size">Brush size</label>
+            <div class="inline-control">
+              <input id="brush-size" type="range" min="2" max="40" value="8" />
+              <span id="brush-size-value">8 px</span>
+            </div>
+          </section>
+
+          <section class="control-group">
+            <label for="color-picker">Color</label>
+            <input id="color-picker" type="color" value="#3b82f6" />
+          </section>
+
+          <section class="control-group">
+            <label for="opacity-range">Opacity</label>
+            <div class="inline-control">
+              <input id="opacity-range" type="range" min="10" max="100" value="100" />
+              <span id="opacity-value">100%</span>
+            </div>
+          </section>
+
+          <section class="control-group compact-actions">
+            <button id="undo-btn" class="ghost-button">Undo</button>
+            <button id="clear-btn" class="ghost-button warn">Clear frame</button>
+          </section>
+
+          <section class="control-group">
+            <label class="checkbox-row">
+              <input id="onion-skin" type="checkbox" checked />
+              <span>Onion skin</span>
+            </label>
+          </section>
+        </aside>
+
+        <section class="stage-panel panel">
+          <div class="stage-toolbar">
+            <span id="frame-label">Frame 1</span>
+            <div class="stage-meta">
+              <span id="fps-label">12 fps</span>
+              <span id="frame-count-badge">1 frame</span>
+            </div>
+          </div>
+
+          <div class="stage-canvas-wrap">
+            <canvas id="stage" width="720" height="480" aria-label="Animation canvas"></canvas>
+          </div>
+        </section>
+
+        <aside class="timeline-panel panel">
+          <div class="timeline-header">
+            <h2>Timeline</h2>
+            <div class="timeline-actions">
+              <button id="add-frame" class="secondary-button small">+ Frame</button>
+              <button id="duplicate-frame" class="secondary-button small">Duplicate</button>
+              <button id="delete-frame" class="ghost-button small warn">Delete</button>
+            </div>
+          </div>
+
+          <div id="timeline" class="timeline" aria-live="polite"></div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
