@@ -222,6 +222,18 @@ input[type="color"] {
   accent-color: var(--accent-strong);
 }
 
+.fps-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#fps-value {
+  min-width: 62px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .stage-panel {
   padding: 16px 16px 12px;
 }
